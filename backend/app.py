@@ -1,11 +1,12 @@
 from flask import Flask, jsonify, request
 from flask_cors import CORS
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine
 import pandas as pd
 from models import Base
 from sqlalchemy.orm import sessionmaker
 from models import Play
 import os
+from datetime import datetime
 
 app = Flask(__name__)
 CORS(app) # Enable CORS for all routes
@@ -18,6 +19,7 @@ TABLE_NAME = 'data'
 engine = create_engine(DB_PATH, echo=False)
 Session = sessionmaker(bind=engine)
 
+# Create the sqlite database if it doesn't exist
 def create_db():
     if not os.path.exists("database.db"):
         print("Creating SQLite database from CSV...")
@@ -34,53 +36,63 @@ def create_db():
         
         df.to_sql("plays", engine, if_exists="append", index=False)
 
-# def get_db_connection():
-#     conn = sqlite3.connect(DB_FILE)
-#     conn.row_factory = sqlite3.Row
-#     return conn
-
-# For this exercise, parameterized queries are used instead of SQLAlchemy ORM
-# to prevent SQL injection and to keep the example simple.
+# For this exercise, we'll use SQLAlchemy to manage the database connection
+# and session management. Since queries are simple, we won't use raw SQL 
+# and protect against SQL injection by using SQLAlchemy's ORM features.
 @app.route('/api/data')
 def get_data():
-    pitcher = request.args.get('pitcher')
-    batter = request.args.get('batter')
-    date = request.args.get('date')
-    outcome = request.args.get('outcome')
+    try:
+        pitcher = request.args.get('pitcher')
+        batter = request.args.get('batter')
+        date = request.args.get('date')
+        outcome = request.args.get('outcome')
 
-    session = Session()
-    query = session.query(Play)
+        session = Session()
+        query = session.query(Play)
 
-    if pitcher:
-        query = query.filter(Play.pitcher.ilike(pitcher))
-    if batter:
-        query = query.filter(Play.batter.ilike(batter))
-    if date:
-        query = query.filter(Play.game_date == date)
-    if outcome:
-        query = query.filter(Play.play_outcome.ilike(outcome))
-    
-    plays = query.order_by(Play.game_date.desc()).limit(100).all()
+        if pitcher:
+            query = query.filter(Play.pitcher.ilike(f"%{pitcher}%"))
+        if batter:
+            query = query.filter(Play.batter.ilike(f"%{batter}%"))
+        if date:
+            # Validate date format
+            parsed_date = datetime.strptime(date, '%Y-%m-%d').date()
+            if not parsed_date:
+                raise ValueError("Invalid date format. Use YYYY-MM-DD.")
+            query = query.filter(Play.game_date == date)
+        if outcome:
+            query = query.filter(Play.play_outcome.ilike(outcome))
+        
+        plays = query.order_by(Play.game_date.desc()).limit(100).all()
 
-    # Convert model objects to dicts
-    result = []
-    for play in plays:
-        result.append({
-            "id": play.id,
-            "batter_id": play.batter_id,
-            "batter": play.batter,
-            "pitcher_id": play.pitcher_id,
-            "pitcher": play.pitcher,
-            "game_date": play.game_date.isoformat(),
-            "play_outcome": play.play_outcome,
-        })
-    session.close()
-    return jsonify(result)
+        # Convert model objects to dicts
+        result = []
+        for play in plays:
+            result.append({
+                "id": play.id,
+                "batter": play.batter,
+                "pitcher": play.pitcher,
+                "game_date": play.game_date.isoformat(),
+                "play_outcome": play.play_outcome,
+                "launch_angle": play.launch_angle,
+                "exit_speed": play.exit_speed,
+                "hit_distance": play.hit_distance,
+            })
+        session.close()
+        return jsonify(result)
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+    except Exception as e:
+        print(e)
+        return jsonify({"error": "An error occurred while processing your request."}), 500
 
+# Route to get a specific play by ID
 @app.route('/api/play/<int:id>')
 def get_play(id):
     session = Session()
     play = session.query(Play).filter(Play.id == id).first()
+
+    # Return 404 if not found
     if not play:
         return jsonify({"error": "Play not found"}), 404
     result = {
