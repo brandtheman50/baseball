@@ -1,65 +1,158 @@
-import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 
-// PlayVisual: Displays detailed stats and video for a single play
-const PlayVisual = () => {
-  // Extract the play ID from the route parameter (e.g., /play/123)
-  const id = useParams().id;
+// TableVisual: Displays a searchable and filterable table of baseball plays
+const TableVisual = () => {
+  // Holds the list of play data returned from the backend
+  const [data, setData] = useState([]);
 
-  // Store the play data fetched from the backend
-  const [playData, setPlayData] = useState({});
+  // React Router hook to programmatically navigate to a play's detail view
+  const navigate = useNavigate();
 
-  // Typically a loading state is used to manage the UI while data is being fetched
-  // const [isLoading, setIsLoading] = useState(true);
-  // Set isLoading to false once data is fetched
+  // Filter inputs for querying the API
+  const [filters, setFilters] = useState({
+    batter: "",
+    pitcher: "",
+    date: "",
+    outcome: "",
+  });
 
-  // Fetch the play data when the component mounts
+  // Column headers for the table
+  const headers = [
+    "Pitcher",
+    "Batter",
+    "Date",
+    "Outcome",
+    "Launch Angle",
+    "Exit Speed",
+    "Hit Distance",
+  ];
+
+  // Fetch filtered data from the Flask backend API
+  const fetchData = async () => {
+    try {
+      const query = new URLSearchParams();
+
+      // Append filters if present
+      if (filters.batter) query.append("batter", filters.batter);
+      if (filters.pitcher) query.append("pitcher", filters.pitcher);
+      if (filters.date) query.append("date", filters.date);
+      if (filters.outcome) query.append("outcome", filters.outcome);
+
+      const response = await fetch(
+        `http://localhost:5000/api/data?${query.toString()}`
+      );
+      const json = await response.json();
+      setData(json);
+    } catch (e) {
+      console.log("Error fetching data:"), e;
+    }
+  };
+
+  // Handle input changes in filter fields
+  const updateFilters = (e) => {
+    const { name, value } = e.target;
+    setFilters((prevFilters) => ({
+      ...prevFilters,
+      [name]: value,
+    }));
+  };
+
+  // Initial fetch when the component mounts
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        // Fetch data from the Flask API for this specific play
-        const response = await fetch(`http://localhost:5000/api/play/${id}`);
-        if (!response.ok) {
-          throw new Error("Error fetching data.");
-        }
-        const data = await response.json();
-        setPlayData(data); // Store the data in state
-      } catch (error) {
-        console.error("Error fetching play data:", error);
-      }
-    };
-
     fetchData();
-  }, []); // Empty dependency array means this runs once on mount
+  }, []);
 
   return (
-    <>
-      {/* Embedded video of the play, using the provided video_link URL */}
-      <iframe
-        width="560"
-        height="315"
-        src={playData.video_link}
-        allow="autoplay; encrypted-media; picture-in-picture"
-        sandbox="allow-scripts allow-same-origin"
-        allowFullScreen
-      ></iframe>
+    <div>
+      <div className="page-cont">
+        <h1 className="page-title">Braves Play Search</h1>
 
-      {/* Display the full set of stats for the selected play */}
-      <div className="stats">
-        <h2>Play Details</h2>
-        <p><strong>Batter:</strong> {playData.batter}</p>
-        <p><strong>Pitcher:</strong> {playData.pitcher}</p>
-        <p><strong>Date:</strong> {playData.game_date}</p>
-        <p><strong>Outcome:</strong> {playData.play_outcome}</p>
-        <p><strong>Launch angle:</strong> {playData.launch_angle}</p>
-        <p><strong>Exit speed:</strong> {playData.exit_speed}</p>
-        <p><strong>Exit direction:</strong> {playData.exit_direction}</p>
-        <p><strong>Hit distance:</strong> {playData.hit_distance}</p>
-        <p><strong>Hang time:</strong> {playData.hang_time}</p>
-        <p><strong>Hit spin rate:</strong> {playData.hit_spin_rate}</p>
+        {/* Search filter inputs: for more logic or functionality, create custom component for input fields */}
+        <div className="search-cont">
+          {/* Pitcher input */}
+          <input
+            type="text"
+            name="pitcher"
+            className="text-filter"
+            placeholder="Pitcher Name"
+            value={filters.pitcher}
+            onChange={updateFilters}
+          />
+          {/* Batter input */}
+          <input
+            type="text"
+            name="batter"
+            className="text-filter"
+            placeholder="Batter Name"
+            value={filters.batter}
+            onChange={updateFilters}
+          />
+          {/* Date input */}
+          <input
+            type="date"
+            name="date"
+            className="text-filter"
+            value={filters.date}
+            onChange={updateFilters}
+          />
+          {/* Outcome dropdown */}
+          <select
+            className="text-filter"
+            name="outcome"
+            value={filters.outcome}
+            onChange={updateFilters}
+          >
+            <option value="">Select Play Type</option>
+            <option value="out">Out</option>
+            <option value="single">Single</option>
+            <option value="double">Double</option>
+            <option value="triple">Triple</option>
+            <option value="homerun">HomeRun</option>
+          </select>
+
+          {/* Fetch filtered results */}
+          <button className="search-button" onClick={fetchData}>
+            Search
+          </button>
+        </div>
+
+        {/* Results Table */}
+        <div className="results-cont">
+          <h4>Click on any row to see video and other stats.</h4>
+
+          <table className="tableStyle">
+            <thead>
+              <tr className="tableHeader">
+                {/* Render table headers */}
+                {headers.map((header) => (
+                  <th key={header}>{header}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {/* Render each play as a row */}
+              {data.map((play) => (
+                <tr
+                  key={play.id}
+                  onClick={() => navigate(`/play/${play.id}`)}
+                  style={{ cursor: "pointer" }}
+                >
+                  <td>{play.pitcher}</td>
+                  <td>{play.batter}</td>
+                  <td>{play.game_date}</td>
+                  <td>{play.play_outcome}</td>
+                  <td>{play.launch_angle}</td>
+                  <td>{play.exit_speed}</td>
+                  <td>{play.hit_distance}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
-    </>
+    </div>
   );
 };
 
-export default PlayVisual;
+export default TableVisual;
