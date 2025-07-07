@@ -1,2 +1,6 @@
-backend/data.db
+backend/database.db
+backend/env
+backend/venv
 env
+venv
+.DS_Store

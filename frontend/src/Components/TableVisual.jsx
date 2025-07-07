@@ -1,120 +1,65 @@
-import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { useParams } from "react-router-dom";
 
-const TableVisual = () => {
-  const [data, setData] = useState([]);
-  const navigate = useNavigate();
-  const [isLoading, setIsLoading] = useState(true);
-  const [filters, setFilters] = useState({
-    batter: "",
-    pitcher: "",
-    date: "",
-    outcome: "",
-  });
+// PlayVisual: Displays detailed stats and video for a single play
+const PlayVisual = () => {
+  // Extract the play ID from the route parameter (e.g., /play/123)
+  const id = useParams().id;
 
-  const fetchData = async () => {
-    try {
-      const query = new URLSearchParams();
+  // Store the play data fetched from the backend
+  const [playData, setPlayData] = useState({});
 
-      if (filters.batter) query.append("batter", filters.batter);
-      if (filters.pitcher) query.append("pitcher", filters.pitcher);
-      if (filters.date) query.append("date", filters.date);
-      if (filters.outcome) query.append("outcome", filters.outcome);
+  // Typically a loading state is used to manage the UI while data is being fetched
+  // const [isLoading, setIsLoading] = useState(true);
+  // Set isLoading to false once data is fetched
 
-      const response = await fetch(
-        `http://localhost:5000/api/data?${query.toString()}`
-      );
-      const json = await response.json();
-      setData(json);
-    } catch (e) {
-      console.log("Error fetching data:"), e;
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const updateFilters = (e) => {
-    const { name, value } = e.target;
-    setFilters((prevFilters) => ({
-      ...prevFilters,
-      [name]: value,
-    }));
-  };
-
+  // Fetch the play data when the component mounts
   useEffect(() => {
+    const fetchData = async () => {
+      try {
+        // Fetch data from the Flask API for this specific play
+        const response = await fetch(`http://localhost:5000/api/play/${id}`);
+        if (!response.ok) {
+          throw new Error("Error fetching data.");
+        }
+        const data = await response.json();
+        setPlayData(data); // Store the data in state
+      } catch (error) {
+        console.error("Error fetching play data:", error);
+      }
+    };
+
     fetchData();
-  }, []);
+  }, []); // Empty dependency array means this runs once on mount
 
   return (
-    <div>
-      <div className="page-cont">
-        <h1 className="page-title">Braves Play Search</h1>
-        <div className="search-cont">
-          <input
-            type="text"
-            name="pitcher"
-            className="text-filter"
-            placeholder="Pitcher Name"
-            value={filters.pitcher}
-            onChange={updateFilters}
-          />
-          <input
-            type="text"
-            name="batter"
-            className="text-filter"
-            placeholder="Batter Name"
-            value={filters.batter}
-            onChange={updateFilters}
-          />
-          <input
-            type="date"
-            name="date"
-            className="text-filter"
-            value={filters.date}
-            onChange={updateFilters}
-          />
-          <select
-            className="text-filter"
-            name="outcome"
-            value={filters.outcome}
-            onChange={updateFilters}
-          >
-            <option value="">Select Play Type</option>
-            <option value="out">Out</option>
-            <option value="single">Single</option>
-            <option value="double">Double</option>
-            <option value="triple">Triple</option>
-            <option value="homerun">HomeRun</option>
-          </select>
-          <button className="search-button" onClick={fetchData}>
-            Search
-          </button>
-        </div>
-        <div className="results-cont">
-          <table className="tableStyle">
-            <thead>
-              <tr className="tableHeader">
-                <th>Pitcher</th>
-                <th>Batter</th>
-                <th>Date</th>
-                <th>Outcome</th>
-              </tr>
-            </thead>
-            <tbody>
-              {data.map((play) => (
-                <tr key={play.id} onClick={() => navigate(`/play/${play.id}`)}>
-                  <td>{play.pitcher}</td>
-                  <td>{play.batter}</td>
-                  <td>{play.game_date}</td>
-                  <td>{play.play_outcome}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+    <>
+      {/* Embedded video of the play, using the provided video_link URL */}
+      <iframe
+        width="560"
+        height="315"
+        src={playData.video_link}
+        allow="autoplay; encrypted-media; picture-in-picture"
+        sandbox="allow-scripts allow-same-origin"
+        allowFullScreen
+      ></iframe>
+
+      {/* Display the full set of stats for the selected play */}
+      <div className="stats">
+        <h2>Play Details</h2>
+        <p><strong>Batter:</strong> {playData.batter}</p>
+        <p><strong>Pitcher:</strong> {playData.pitcher}</p>
+        <p><strong>Date:</strong> {playData.game_date}</p>
+        <p><strong>Outcome:</strong> {playData.play_outcome}</p>
+        <p><strong>Launch angle:</strong> {playData.launch_angle}</p>
+        <p><strong>Exit speed:</strong> {playData.exit_speed}</p>
+        <p><strong>Exit direction:</strong> {playData.exit_direction}</p>
+        <p><strong>Hit distance:</strong> {playData.hit_distance}</p>
+        <p><strong>Hang time:</strong> {playData.hang_time}</p>
+        <p><strong>Hit spin rate:</strong> {playData.hit_spin_rate}</p>
       </div>
-    </div>
+    </>
   );
 };
 
-export default TableVisual;
+export default PlayVisual;
