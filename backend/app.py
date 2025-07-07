@@ -2,11 +2,10 @@ from flask import Flask, jsonify, request
 from flask_cors import CORS
 from sqlalchemy import create_engine
 import pandas as pd
-from models import Base
 from sqlalchemy.orm import sessionmaker
 from models import Play
-import os
 from datetime import datetime
+from load_data import create_db
 
 app = Flask(__name__)
 CORS(app) # Enable CORS for all routes
@@ -18,23 +17,6 @@ TABLE_NAME = 'data'
 # Create engine + session
 engine = create_engine(DB_PATH, echo=False)
 Session = sessionmaker(bind=engine)
-
-# Create the sqlite database if it doesn't exist
-def create_db():
-    if not os.path.exists("database.db"):
-        print("Creating SQLite database from CSV...")
-        df = pd.read_csv(CSV_FILE)
-        # Rename columns to match model
-        df.columns = [col.lower() for col in df.columns]
-
-        # Parse game_date
-        df['game_date'] = pd.to_datetime(df['game_date']).dt.date
-
-        engine = create_engine(DB_PATH)
-        Base.metadata.drop_all(engine)
-        Base.metadata.create_all(engine)
-        
-        df.to_sql("plays", engine, if_exists="append", index=False)
 
 # For this exercise, we'll use SQLAlchemy to manage the database connection
 # and session management. Since queries are simple, we won't use raw SQL 
@@ -59,8 +41,12 @@ def get_data():
             parsed_date = datetime.strptime(date, '%Y-%m-%d').date()
             if not parsed_date:
                 raise ValueError("Invalid date format. Use YYYY-MM-DD.")
-            query = query.filter(Play.game_date == date)
+            query = query.filter(Play.game_date == parsed_date)
         if outcome:
+            # Validate outcome against a predefined set
+            valid_outcomes = {"out", "single", "double", "triple", "homerun"}
+            if outcome.lower() not in valid_outcomes:
+                raise ValueError("Invalid play outcome.")
             query = query.filter(Play.play_outcome.ilike(outcome))
         
         plays = query.order_by(Play.game_date.desc()).limit(100).all()
@@ -78,41 +64,46 @@ def get_data():
                 "exit_speed": play.exit_speed,
                 "hit_distance": play.hit_distance,
             })
-        session.close()
         return jsonify(result)
     except ValueError as e:
         return jsonify({"error": str(e)}), 400
     except Exception as e:
         print(e)
         return jsonify({"error": "An error occurred while processing your request."}), 500
+    finally:
+        session.close()
 
 # Route to get a specific play by ID
 @app.route('/api/play/<int:id>')
 def get_play(id):
-    session = Session()
-    play = session.query(Play).filter(Play.id == id).first()
+    try:
+        session = Session()
+        play = session.query(Play).filter(Play.id == id).first()
 
-    # Return 404 if not found
-    if not play:
-        return jsonify({"error": "Play not found"}), 404
-    result = {
-        "id": play.id,
-        "batter_id": play.batter_id,
-        "batter": play.batter,
-        "pitcher_id": play.pitcher_id,
-        "pitcher": play.pitcher,
-        "game_date": play.game_date.isoformat(),
-        "launch_angle": play.launch_angle,
-        "exit_speed": play.exit_speed,
-        "exit_direction": play.exit_direction,
-        "hit_distance": play.hit_distance,
-        "hang_time": play.hang_time,
-        "hit_spin_rate": play.hit_spin_rate,
-        "play_outcome": play.play_outcome,
-        "video_link": play.video_link
-    }
-    session.close()
-    return jsonify(result)
+        # Return 404 if not found
+        if not play:
+            return jsonify({"error": "Play not found"}), 404
+        result = {
+            "id": play.id,
+            "batter_id": play.batter_id,
+            "batter": play.batter,
+            "pitcher_id": play.pitcher_id,
+            "pitcher": play.pitcher,
+            "game_date": play.game_date.isoformat(),
+            "launch_angle": play.launch_angle,
+            "exit_speed": play.exit_speed,
+            "exit_direction": play.exit_direction,
+            "hit_distance": play.hit_distance,
+            "hang_time": play.hang_time,
+            "hit_spin_rate": play.hit_spin_rate,
+            "play_outcome": play.play_outcome,
+            "video_link": play.video_link
+        }
+        return jsonify(result)
+    except Exception as e:
+        print(e)
+    finally:
+        session.close()
 
 if __name__ == '__main__':
     create_db()
