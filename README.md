@@ -17,7 +17,7 @@ Follow the steps below to run the app locally.
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/yourusername/baseball.git
+git clone https://github.com/brandtheman50/baseball.git
 cd baseball
 
 cd backend
