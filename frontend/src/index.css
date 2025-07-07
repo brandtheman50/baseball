@@ -1,0 +1,86 @@
+* {
+  background: rgb(255, 137, 137);
+}
+.page-cont {
+  width: 100%;
+  height: 100vh;
+}
+
+.search-cont {
+  display: flex;
+  gap: 24px;
+  margin-bottom: 24px;
+}
+
+.search-button {
+  border-radius: 16px;
+  padding: 8px 16px;
+  border: none;
+  box-sizing: border-box;
+  font-size: 16px;
+  color: #fff;
+  background-color: #ff1212;
+  transition: background-color 0.2s ease;
+  outline: none;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  cursor: pointer;
+}
+
+.search-button:hover {
+  background-color: #fe5959;
+}
+.text-filter {
+  border-radius: 16px;
+  padding: 8px 16px;
+  border: 1px solid #ccc;
+  box-sizing: border-box;
+  font-size: 16px;
+  color: #333;
+  background-color: #fff;
+  transition: border-color 0.3s ease;
+  outline: none;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  font-family: 'Arial', sans-serif;
+  font-weight: 400;
+  resize: none;
+  height: 40px;
+  line-height: 1.5;
+}
+
+.tableStyle {
+  width: fit-content;
+  border-collapse: collapse;
+  border-radius: 8px;
+}
+
+.tableStyle th:first-child {
+  border-radius: 8px 0 0 0;
+}
+
+.tableStyle th:last-child {
+  border-radius: 0 8px 0 0;
+}
+
+.tableStyle td, .tableStyle th {
+  padding: 8px 12px;
+}
+
+.tableStyle th {
+  background: #f2f2f2;
+}
+
+.tableStyle tbody tr {
+  cursor: pointer;
+}
+
+.tableStyle td {
+  border: 1px solid #ddd;
+  background: #fff;
+}
+
+@media (max-width: 500px) {
+  .search-cont {
+    flex-wrap: wrap;
+  }
+}
+
