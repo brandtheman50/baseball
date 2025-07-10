@@ -2,7 +2,7 @@ from flask import Flask
 from flask_cors import CORS
 from sqlalchemy import create_engine
 import pandas as pd
-from models import Base
+from .models import Base
 import os
 
 app = Flask(__name__)

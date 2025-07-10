@@ -1,22 +1,7 @@
-from flask import Flask, jsonify, request
-from flask_cors import CORS
-from sqlalchemy import create_engine
-import pandas as pd
-from sqlalchemy.orm import sessionmaker
-from models import Play
+from app import app, Session
+from flask import jsonify, request
+from .models import Play
 from datetime import datetime
-from load_data import create_db
-
-app = Flask(__name__)
-CORS(app) # Enable CORS for all routes
-
-DB_PATH = 'sqlite:///database.db'
-CSV_FILE = 'data.csv'
-TABLE_NAME = 'data'
-
-# Create engine + session
-engine = create_engine(DB_PATH, echo=False)
-Session = sessionmaker(bind=engine)
 
 # For this exercise, we'll use SQLAlchemy to manage the database connection
 # and session management. Since queries are simple, we won't use raw SQL 
@@ -104,7 +89,3 @@ def get_play(id):
         print(e)
     finally:
         session.close()
-
-if __name__ == '__main__':
-    create_db()
-    app.run(debug=True)
